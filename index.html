@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Pro Inventory Manager</title>
+    <style>
+        body { font-family: 'Inter', sans-serif; padding: 40px; background: #f1f5f9; display: flex; gap: 30px; }
+        .sidebar { width: 350px; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        input, select, button { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; }
+        button { background: #2563eb; color: white; border: none; font-weight: bold; cursor: pointer; }
+        button:hover { background: #1d4ed8; }
+        .book-card { background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 6px solid #2563eb; }
+        .badge { background: #e2e8f0; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="card">
+            <h3>1. Create Category</h3>
+            <input type="text" id="newCatName" placeholder="e.g., Coding, Science">
+            <button onclick="saveCategory()">Add Category</button>
+        </div>
+
+        <div class="card">
+            <h3>2. Add Book</h3>
+            <form id="bookForm">
+                <input type="text" id="title" placeholder="Book Title" required>
+                <input type="text" id="author" placeholder="Author" required>
+                <input type="number" id="price" placeholder="Price" required>
+                <label>Select Category:</label>
+                <select id="catDropdown" required>
+                    <option value="">-- Choose --</option>
+                </select>
+                <button type="submit">Save Book</button>
+            </form>
+        </div>
+    </div>
+
+    <div style="flex: 1;">
+        <h2>Current Inventory</h2>
+        <div id="bookList"></div>
+    </div>
+
+    <script>
+        // Refresh Category Dropdown
+        async function loadCategories() {
+            const res = await fetch('/api/categories');
+            const data = await res.json();
+            const dropdown = document.getElementById('catDropdown');
+            dropdown.innerHTML = '<option value="">-- Choose --</option>' + 
+                data.map(c => `<option value="${c._id}">${c.name}</option>`).join('');
+        }
+
+        // Save New Category
+        async function saveCategory() {
+            const name = document.getElementById('newCatName').value;
+            if(!name) return;
+            await fetch('/api/categories', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ name })
+            });
+            document.getElementById('newCatName').value = '';
+            loadCategories(); // Auto-update dropdown
+        }
+
+        // Load and Display Books
+        async function loadBooks() {
+            const res = await fetch('/api/books');
+            const books = await res.json();
+            document.getElementById('bookList').innerHTML = books.map(b => `
+                <div class="book-card">
+                    <strong>${b.title}</strong> by ${b.author} <br>
+                    <span class="badge">${b.category ? b.category.name : 'No Category'}</span>
+                    <span style="float:right; color:#16a34a; font-weight:bold;">$${b.price}</span>
+                </div>
+            `).join('');
+        }
+
+        // Handle Book Submission
+        document.getElementById('bookForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                title: document.getElementById('title').value,
+                author: document.getElementById('author').value,
+                price: document.getElementById('price').value,
+                category: document.getElementById('catDropdown').value
+            };
+
+            await fetch('/api/books', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            e.target.reset();
+            loadBooks();
+        });
+
+        // Initial Load
+        loadCategories();
+        loadBooks();
+    </script>
+</body>
+</html>
